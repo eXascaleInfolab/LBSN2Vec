@@ -8,4 +8,8 @@ mex CFLAGS='$CFLAGS -pthread -Ofast -march=native -Wall -funroll-loops -Wno-unus
 
 2. Run experiment_LBSN2Vec.m
 
-Please cite our paper if you use this code.
+The whole (global) dataset can be found on: 
+https://sites.google.com/site/yangdingqi/home/foursquare-dataset
+
+
+Please cite our paper if you use this code or dataset.
