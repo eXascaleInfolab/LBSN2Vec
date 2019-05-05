@@ -68,10 +68,10 @@ void getNextRand(unsigned long *next_random){
 long long get_a_neg_sample(unsigned long next_random, long long *neg_sam_table, long long table_size){
     long long target_n;
     unsigned long long ind;
-    
+
     ind = (next_random >> 16) % table_size;
     target_n = neg_sam_table[ind];
-    
+
     return target_n;
 }
 
@@ -130,15 +130,15 @@ void learn_a_pair_loc_loc_cosine(int flag, long long loc1, long long loc2, doubl
     double f=0,tmp1,tmp2,c1,c2,c3; //f2=0,
     double norm1 = get_norm_l2_loc(loc1);
     double norm2 = get_norm_l2_loc(loc2);
-    
+
     for (int d=0;d<dim_emb;d++)
         f += emb_n[loc1+d] * emb_n[loc2+d];
-    
+
     c1 = 1/(norm1*norm2)*alpha;
     c2 = f/(norm1*norm1*norm1*norm2)*alpha;
     c3 = f/(norm1*norm2*norm2*norm2)*alpha;
-    
-    
+
+
     if (flag==1){
 //         *loss += f;
         for (int d=0; d<dim_emb; d++){
@@ -156,23 +156,23 @@ void learn_a_pair_loc_loc_cosine(int flag, long long loc1, long long loc2, doubl
             emb_n[loc1 + d] -= c1*tmp2 - c2*tmp1;
         }
     }
-    
+
 }
 
 void learn_a_pair_loc_pr_cosine(int flag, long long loc1, double *best_fit, double *loss)
 {
     double f=0,g=0,a=0,c1,c2; //f2=0,
     double norm1 = get_norm_l2_loc(loc1);
-    
+
     for (int d=0;d<dim_emb;d++)
         f += emb_n[loc1+d] * best_fit[d];
-    
+
     g = f/norm1;
-    
+
     a = alpha;
     c1 = 1/(norm1)*a;
     c2 = f/(norm1*norm1*norm1)*a;
-    
+
     if (flag==1){
 //         *loss += g;
         for (int d=0; d<dim_emb; d++)
@@ -190,7 +190,7 @@ void learn_an_edge(long long word, long long target_e, unsigned long *next_rando
     long long loc_w = (word-1)*dim_emb;
     long long loc_e = (target_e-1)*dim_emb;
     learn_a_pair_loc_loc_cosine(1, loc_w, loc_e, counter);
-    
+
     if (num_neg<1){
         getNextRand(next_random);
         if (get_a_neg_sample_Kless1(*next_random)==1){
@@ -198,7 +198,7 @@ void learn_an_edge(long long word, long long target_e, unsigned long *next_rando
             target_n = get_a_neg_sample(*next_random, neg_sam_table_social, table_size_social);
             if ((target_n != target_e) && (target_n != word)){
                 loc_neg = (target_n-1)*dim_emb;
-                learn_a_pair_loc_loc_cosine(0, loc_w, loc_neg, counter); 
+                learn_a_pair_loc_loc_cosine(0, loc_w, loc_neg, counter);
             }
         }
     }else{
@@ -220,14 +220,14 @@ void learn_an_edge_with_BFT(long long word, long long target_e, unsigned long *n
     double norm;
     long long loc_w = (word-1)*dim_emb;
     long long loc_e = (target_e-1)*dim_emb;
-    
+
     for (int d=0; d<dim_emb; d++) best_fit[d] = emb_n[loc_w+d] + emb_n[loc_e+d];
     norm = get_norm_l2_pr(best_fit);
     for (int d=0; d<dim_emb; d++) best_fit[d] = best_fit[d]/norm;
-    
+
     learn_a_pair_loc_pr_cosine(1, loc_w, best_fit, counter);
     learn_a_pair_loc_pr_cosine(1, loc_e, best_fit, counter);
-    
+
     if (num_neg<1){
         getNextRand(next_random);
         if (get_a_neg_sample_Kless1(*next_random)==1){
@@ -235,7 +235,7 @@ void learn_an_edge_with_BFT(long long word, long long target_e, unsigned long *n
             target_n = get_a_neg_sample(*next_random, neg_sam_table_social, table_size_social);
             if ((target_n != target_e) && (target_n != word)){
                 loc_neg = (target_n-1)*dim_emb;
-                learn_a_pair_loc_pr_cosine(0, loc_neg, best_fit, counter); 
+                learn_a_pair_loc_pr_cosine(0, loc_neg, best_fit, counter);
             }
         }
     }else{
@@ -262,19 +262,20 @@ void learn_a_hyperedge(long long *edge, long long edge_len, unsigned long *next_
     for (int d=0; d<dim_emb; d++) best_fit[d] = 0;
     for (int i=0; i<edge_len; i++) {
         loc_n = (edge[i]-1)*dim_emb;
-        for (int d=0; d<dim_emb; d++) best_fit[d] += emb_n[loc_n + d];
+        norm = get_norm_l2_pr(&emb_n[loc_n]);
+        for (int d=0; d<dim_emb; d++) best_fit[d] += emb_n[loc_n + d]/norm;
     }
 //  normalize best fit line for fast computation
     norm = get_norm_l2_pr(best_fit);
     for (int d=0; d<dim_emb; d++) best_fit[d] = best_fit[d]/norm;
-    
-    
+
+
 //#################### learn learn learn
     for (int i=0; i<edge_len; i++) {
         node = edge[i];
         loc_n = (node-1)*dim_emb;
         learn_a_pair_loc_pr_cosine(1, loc_n, best_fit, counter);
-        
+
         if (num_neg<1){
             getNextRand(next_random);
             if (get_a_neg_sample_Kless1(*next_random)==1){
@@ -283,7 +284,7 @@ void learn_a_hyperedge(long long *edge, long long edge_len, unsigned long *next_
                 else if (i==1) target_neg = get_a_neg_sample(*next_random, neg_sam_table_mobility2, table_size_mobility2);
                 else if (i==2) target_neg = get_a_neg_sample(*next_random, neg_sam_table_mobility3, table_size_mobility3);
                 else if (i==3) target_neg = get_a_neg_sample(*next_random, neg_sam_table_mobility4, table_size_mobility4);
-                
+
                 if (target_neg != node) {
                     loc_neg = (target_neg-1)*dim_emb;
                     learn_a_pair_loc_pr_cosine(0, loc_neg, best_fit, counter);
@@ -296,7 +297,7 @@ void learn_a_hyperedge(long long *edge, long long edge_len, unsigned long *next_
                 else if (i==1) target_neg = get_a_neg_sample(*next_random, neg_sam_table_mobility2, table_size_mobility2);
                 else if (i==2) target_neg = get_a_neg_sample(*next_random, neg_sam_table_mobility3, table_size_mobility3);
                 else if (i==3) target_neg = get_a_neg_sample(*next_random, neg_sam_table_mobility4, table_size_mobility4);
-                
+
                 if (target_neg != node) {
                     loc_neg = (target_neg-1)*dim_emb;
                     learn_a_pair_loc_pr_cosine(0, loc_neg, best_fit, counter);
@@ -309,7 +310,7 @@ void learn_a_hyperedge(long long *edge, long long edge_len, unsigned long *next_
 
 void merge_hyperedges(long long *edge_merged, long long* edge_merged_len, long long *a_edge, long long a_edge_len)
 {
-    memcpy(edge_merged+(*edge_merged_len), a_edge, a_edge_len * sizeof(long long)); 
+    memcpy(edge_merged+(*edge_merged_len), a_edge, a_edge_len * sizeof(long long));
     *edge_merged_len += a_edge_len;
 }
 
@@ -332,7 +333,7 @@ void learn(void *id)
 {
     long long word, target_e, a_checkin_ind, a_checkin_loc;
     double *best_fit = (double *)mxMalloc(dim_emb*sizeof(double)); //a node embedding
-    
+
     double counter;
 //     double norm;
 
@@ -341,20 +342,20 @@ void learn(void *id)
     long long *a_user_checkins;
     long long *edge;
     long long edge_len = 4; // here 4 is a checkin node number user-time-POI-category
-    
-    
-    
+
+
+
     long long ind_start = num_w/num_threads * (long long)id;
     long long ind_end = num_w/num_threads * ((long long)id+1);
-    
+
     long long ind_len = ind_end-ind_start;
     double progress=0,progress_old=0;
     alpha = starting_alpha;
-    
+
     long long loc_walk;
 //     mexPrintf("Thread %lld starts from hyperedges %lld to %lld\n",(long long)id,ind_start,ind_end);
-    
-    for (int pp=0; pp<num_epoch; pp++){ 
+
+    for (int pp=0; pp<num_epoch; pp++){
         counter = 0;
 
         for (int w=ind_start; w<ind_end; w++) {
@@ -368,11 +369,11 @@ void learn(void *id)
 // //                     shownorm();
 //                 }
             }
-            
+
             loc_walk = w*num_wl;
             for (int i=0; i<num_wl; i++) {
                 word = walk[loc_walk+i];
-                              
+
                 for (int j=1;j<=win_size;j++){
                     getNextRand(&next_random);
                     if (get_a_social_decision(next_random)==1){
@@ -391,11 +392,11 @@ void learn(void *id)
                         }
                     }
 //                     printf("user %d has %d checkins.\n",word,user_checkins_count[word-1]);
-                    
-                    
-                    
+
+
+
                 }
-                
+
                 if ((user_checkins_count[word-1]>0) ){
                     for (int m=0; m < fmin(win_size*2,user_checkins_count[word-1]); m++){
                         getNextRand(&next_random);
@@ -403,7 +404,7 @@ void learn(void *id)
 //                             printf("mobility \n");
                             user_pr = mxGetCell(user_checkins, word-1);
                             a_user_checkins = (long long *)mxGetData(user_pr);
-                            
+
                             getNextRand(&next_random);
                             a_checkin_ind = get_a_checkin_sample(next_random, user_checkins_count[word-1]);
 //                         printf("sampled checkin index is %d\n",a_checkin_ind);
@@ -415,13 +416,13 @@ void learn(void *id)
 //
 //                         if (word != edge[0])
 //                             printf("ERROR: user %d is not user %d!=%d\n",word,edge[0]);
-                            
+
                             learn_a_hyperedge(edge, edge_len, &next_random, best_fit, &counter);
                         }
                     }
                 }
             }
-            
+
         }
 //         printf("Thread %lld iteration %d loss: %f \n",(long long)id, pp, counter);
     }
@@ -443,28 +444,28 @@ void mexFunction(int nlhs, mxArray *plhs[],
         mexErrMsgIdAndTxt("MyToolbox:arrayProduct:nlhs",
                 "1 output required.");
     }
-    
+
     walk = (long long *)mxGetData(prhs[0]); // read from file
     num_w = mxGetN(prhs[0]);
     num_wl = mxGetM(prhs[0]);
-    
+
     user_checkins = prhs[1]; // user checkins cell
     num_u = mxGetNumberOfElements(prhs[1]);
-    
+
     user_checkins_count = (long long *)mxGetData(prhs[2]);
-    
-    
+
+
     emb_n = mxGetPr(prhs[3]);
     num_n = mxGetN(prhs[3]);
     dim_emb = mxGetM(prhs[3]);
-    
+
     starting_alpha = mxGetScalar(prhs[4]);
     num_neg = mxGetScalar(prhs[5]);
-    
+
     neg_sam_table_social = (long long *)mxGetData(prhs[6]);
     table_size_social = mxGetM(prhs[6]);
     win_size = mxGetScalar(prhs[7]);
-    
+
     neg_sam_table_mobility = prhs[8];
     table_num_mobility = mxGetNumberOfElements(prhs[8]);
     if(table_num_mobility != 4) {
@@ -482,17 +483,17 @@ void mexFunction(int nlhs, mxArray *plhs[],
     temp = mxGetCell(neg_sam_table_mobility, 3);
     neg_sam_table_mobility4 = (long long *)mxGetData(temp);
     table_size_mobility4 = mxGetM(temp);
-    
-    
-    
-    
-    
+
+
+
+
+
     num_epoch = mxGetScalar(prhs[9]);
     num_threads = mxGetScalar(prhs[10]);
-    
+
     mobility_ratio = mxGetScalar(prhs[11]);
 
-    
+
     mexPrintf("walk size = %d %d\n", num_w,num_wl);
     mexPrintf("user checkins, user count = %d\n", num_u);
     mexPrintf("num of nodes: %lld; embedding dimension: %lld\n",num_n,dim_emb);
@@ -510,16 +511,10 @@ void mexFunction(int nlhs, mxArray *plhs[],
     pthread_t *pt = (pthread_t *)malloc(num_threads * sizeof(pthread_t));
     for (a = 0; a < num_threads; a++) pthread_create(&pt[a], NULL, learn, (long long *)a);
     for (a = 0; a < num_threads; a++) pthread_join(pt[a], NULL);
-    
+
 //      learn(0);
 //
 //     /* create the output matrix */
     plhs[0] = mxDuplicateArray(prhs[3]);
 //
 }
-
-
-
-
-
-
